@@ -11,12 +11,19 @@ once you have motors wired up. Everything else is ready to go.
 
 from rplidar import RPLidar
 import time
+import serial
 
 # ---------------------------------------------------------------
 # CONFIG - tune these once you're testing with real motors
 # ---------------------------------------------------------------
 LIDAR_PORT = "/dev/ttyUSB0"
 LIDAR_BAUD = 460800          # S1/S2 baud rate
+
+ARDUINO_PORT = "/dev/ttyACM0"
+ARDUINO_BAUD = 9600
+
+arduino = None
+last_command = None
 
 STOP_DISTANCE_MM = 500        # if something is closer than this, react
 FORWARD_CONE_DEG = 30         # +/- degrees around "front" (0 deg) to check
@@ -30,22 +37,27 @@ CHECK_RIGHT_DEG = (240, 300)  # angle range considered "right side"
 # code once you have a motor driver wired up (e.g. GPIO pins on a
 # Raspberry Pi via RPi.GPIO or gpiozero)
 # ---------------------------------------------------------------
+def send_command(command):
+        global last_command
+        
+        if command == last_command:
+                return
+                
+        arduino.write(command.encode())
+        last_command = command
+        print(f"Sent: {command}")
+        
 def move_forward():
-    print("[MOTOR] Moving forward")
-    #print("[Detect] Path clear - no obstacles ahead")
-
+    send_command("F")
+    
 def turn_left():
-    print("[Detect] Path Obstructed - more room on the left")
-    #print("[MOTOR] Turning left")
-
-
+    send_command("L")
+    
 def turn_right():
-    print("[Detect] Path Obstructed - more room on the right")
-    #print("[MOTOR] Turning right")
-
-
+    send_command("R")
+    
 def stop():
-    print("[MOTOR] Stopping")
+    send_command("S")
 
 
 # ---------------------------------------------------------------
@@ -100,6 +112,11 @@ def decide_action(scan):
 # MAIN LOOP
 # ---------------------------------------------------------------
 def main():
+    global arduino
+    
+    arduino = serial.Serial(ARDUINO_PORT, ARDUINO_BAUD, timeout = 1)
+    time.sleep(2)
+    
     print("[LIDAR] Connecting...")
     lidar = RPLidar(LIDAR_PORT, baudrate=LIDAR_BAUD, timeout=3)
     print("[LIDAR] Connected.")
